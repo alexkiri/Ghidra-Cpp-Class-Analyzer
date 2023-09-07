@@ -20,6 +20,8 @@ import cppclassanalyzer.plugin.typemgr.TypeInfoTreeProvider;
 import cppclassanalyzer.plugin.typemgr.node.TypeInfoNode;
 import cppclassanalyzer.service.ClassTypeInfoManagerService;
 import cppclassanalyzer.service.RttiManagerProvider;
+import ghidra.util.exception.CancelledException;
+import ghidra.util.exception.AssertException;
 
 import ghidra.app.services.DataTypeManagerService;
 import ghidra.app.services.GoToService;
@@ -164,8 +166,12 @@ public class ClassTypeInfoManagerPlugin extends ProgramPlugin
 
 	@Override
 	public void createArchive(File file) throws IOException {
-		ClassTypeInfoManager manager = ArchiveClassTypeInfoManager.createManager(this, file);
-		managers.add(manager);
+		try {
+			ClassTypeInfoManager manager = ArchiveClassTypeInfoManager.createManager(this, file);
+			managers.add(manager);
+		} catch (CancelledException e) {
+			throw new AssertException(e);
+		}
 	}
 
 	@Override

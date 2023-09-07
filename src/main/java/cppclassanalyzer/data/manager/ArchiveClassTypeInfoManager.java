@@ -62,8 +62,8 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 	private final TypeInfoTreeNodeManager treeNodeManager;
 
 	private ArchiveClassTypeInfoManager(ClassTypeInfoManagerService plugin,
-			File file, int openMode) throws IOException {
-		super(new ResourceFile(file), openMode);
+			File file, int openMode) throws CancelledException, IOException {
+		super(new ResourceFile(file), openMode, TaskMonitor.DUMMY);
 		this.plugin = plugin;
 		this.file = file;
 		ArchivedClassTypeInfoDatabaseTable classTable = getClassTable();
@@ -133,7 +133,7 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 	}
 
 	public static ArchiveClassTypeInfoManager createManager(ClassTypeInfoManagerService plugin,
-			File file) throws IOException {
+			File file) throws CancelledException, IOException {
 		return new ArchiveClassTypeInfoManager(plugin, file, DBConstants.CREATE);
 	}
 
@@ -150,7 +150,11 @@ public final class ArchiveClassTypeInfoManager extends StandAloneDataTypeManager
 	public static ArchiveClassTypeInfoManager open(ClassTypeInfoManagerService plugin, File file,
 			boolean openForUpdate) throws IOException {
 		int mode = openForUpdate ? DBConstants.UPDATE : DBConstants.READ_ONLY;
-		return new ArchiveClassTypeInfoManager(plugin, file, mode);
+		try {
+			return new ArchiveClassTypeInfoManager(plugin, file, mode);
+		} catch (CancelledException e) {
+			throw new AssertException(e);
+		}
 	}
 
 	@Override
