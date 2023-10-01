@@ -37,6 +37,7 @@ public class ClassTypeInfoUtils {
 
 	private static final String PLACEHOLDER_DESCRIPTION = "PlaceHolder Class Structure";
 	private static final String MISSING = "Missing";
+	public static final String THISCALL = "__thiscall";
 
 	private ClassTypeInfoUtils() {
 	}
@@ -130,7 +131,7 @@ public class ClassTypeInfoUtils {
 		boolean hasPureVirtual = program.getSymbolTable().getSymbols(
 			PURE_VIRTUAL_FUNCTION_NAME).hasNext();
 		for (Address reference : references) {
-			monitor.checkCanceled();
+			monitor.checkCancelled();
 			MemBuffer buf = new DumbMemBufferImpl(mem, reference.subtract(ptrDiff.getLength()));
 			Object value = ptrDiff.getValue(
 				buf, ptrDiff.getDefaultSettings(), ptrDiff.getLength());
@@ -270,7 +271,7 @@ public class ClassTypeInfoUtils {
 				function = function.getThunkedFunction(true);
 			}
 			function.setParentNamespace(type.getGhidraClass());
-			function.setCallingConvention(GenericCallingConvention.thiscall.getDeclarationName());
+			function.setCallingConvention(ClassTypeInfoUtils.THISCALL);
 			// necessary due to ghidra bug.
 			function.setCustomVariableStorage(true);
 			function.setCustomVariableStorage(false);
@@ -307,7 +308,7 @@ public class ClassTypeInfoUtils {
 			String.format("Setting class function for %s at %s", type, entry));
 		try {
 			function.setParentNamespace(type.getGhidraClass());
-			function.setCallingConvention(GenericCallingConvention.thiscall.getDeclarationName());
+			function.setCallingConvention(ClassTypeInfoUtils.THISCALL);
 			success = true;
 		} catch (Exception e) {
 			throw new AssertException(String.format(
@@ -330,12 +331,12 @@ public class ClassTypeInfoUtils {
 			List<ClassTypeInfo> sortedClasses = new ArrayList<>(classes.size());
 			Iterator<ClassTypeInfo> classIterator = classSet.iterator();
 			while (classIterator.hasNext()) {
-				monitor.checkCanceled();
+				monitor.checkCancelled();
 				ClassTypeInfo type = classIterator.next();
 				ArrayDeque<ClassTypeInfo> stack = new ArrayDeque<>();
 				stack.push(type);
 				while(!stack.isEmpty()) {
-					monitor.checkCanceled();
+					monitor.checkCancelled();
 					ClassTypeInfo classType = stack.pop();
 					if (classType.hasParent() && classSet.contains(classType)) {
 						ClassTypeInfo parent = classType.getParentModels()[0];
@@ -360,15 +361,26 @@ public class ClassTypeInfoUtils {
 	 * @return the ClassTypeInfo's _vptr DataType
 	 */
 	public static DataType getVptrDataType(Program program, ClassTypeInfo type) {
+		return getVptrDataType(program, type, 0);
+	}
+
+	/**
+	 * Gets the DataType representation of the _vptr for the specified ClassTypeInfo.
+	 * @param program the program containing the ClassTypeInfo
+	 * @param type the ClassTypeInfo
+	 * @return the ClassTypeInfo's _vptr DataType
+	 */
+	public static DataType getVptrDataType(Program program, ClassTypeInfo type, int ordinal) {
 		try {
 			Vtable vtable = type.getVtable();
 			CategoryPath path =
 				new CategoryPath(TypeInfoUtils.getCategoryPath(type), type.getName());
 			DataTypeManager dtm = program.getDataTypeManager();
-			Structure struct = new StructureDataType(path, VtableModel.SYMBOL_NAME, 0, dtm);
+			Structure struct = new StructureDataType(
+				path, VtableModel.SYMBOL_NAME+Integer.toString(ordinal), 0, dtm);
 			Function[][] functionTable = vtable.getFunctionTables();
-			if (functionTable.length > 0 && functionTable[0].length > 0) {
-				for (Function function : functionTable[0]) {
+			if (functionTable.length > ordinal && functionTable[ordinal].length > 0) {
+				for (Function function : functionTable[ordinal]) {
 					if (function != null) {
 						if (function.getName().equals(PURE_VIRTUAL_FUNCTION_NAME)) {
 							DataType dt = dtm.getPointer(VoidDataType.dataType);
